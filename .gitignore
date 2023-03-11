@@ -28,6 +28,7 @@ coverage.xml
 *.swo
 examples/*.png
 examples/*.pdf
+torch_geometric/contrib/flag/dataset/
 
 !torch_geometric/data/
 !test/data/
