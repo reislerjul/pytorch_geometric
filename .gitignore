@@ -29,6 +29,7 @@ coverage.xml
 examples/*.png
 examples/*.pdf
 benchmark/results/
+torch_geometric/contrib/flag/dataset/
 
 !torch_geometric/data/
 !test/data/
