@@ -124,7 +124,7 @@ def main():
     train_idx = split_idx['train'].to(device)
 
     edge_index = data.edge_index.to(device)
-    edge_index = to_undirected(edge_index, data.num_nodes)
+    edge_index = to_undirected(edge_index, num_nodes=data.num_nodes)
 
     if args.self_loop:
         edge_index = add_self_loops(edge_index, num_nodes=data.num_nodes)[0]
