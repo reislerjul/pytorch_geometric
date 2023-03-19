@@ -5,9 +5,9 @@ import torch.nn.functional as F
 from ogb.nodeproppred import Evaluator, PygNodePropPredDataset
 from tqdm import tqdm
 
+from torch_geometric.contrib.flag.flag import FLAG
 from torch_geometric.loader import NeighborSampler
 from torch_geometric.nn import SAGEConv
-from torch_geometric.contrib.flag.flag import FLAG
 
 root = osp.join(osp.dirname(osp.realpath(__file__)), '..', 'data', 'products')
 dataset = PygNodePropPredDataset('ogbn-products', root)
@@ -17,7 +17,7 @@ data = dataset[0]
 
 train_idx = split_idx['train']
 
-# TODO: change this back 
+# TODO: change this back
 train_loader = NeighborSampler(data.edge_index, node_idx=train_idx,
                                sizes=[15, 10, 5], batch_size=1024,
                                shuffle=True, num_workers=12)
@@ -91,7 +91,14 @@ class SAGE(torch.nn.Module):
         return x_all
 
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = None
+if torch.cuda.is_available():
+    device = torch.device('cuda')
+elif torch.backends.mps.is_available():
+    device = torch.device('mps')
+else:
+    device = torch.device('cpu')
+
 model = SAGE(dataset.num_features, 256, dataset.num_classes, num_layers=3)
 model = model.to(device)
 
@@ -112,11 +119,15 @@ def train(epoch):
 
     total_loss = 0
     for batch_size, n_id, adjs in train_loader:
-
-        print("starting batch")
-        loss, _ = flag.forward(x[n_id], adjs, torch.unsqueeze(y[n_id[:batch_size]], 1), torch.tensor([i for i in range(batch_size)], device=device), step_size_labeled, n_ascent_steps=M)
-
-        print(loss)
+        adjs = [adj.to(device) for adj in adjs]
+        loss, _ = flag.forward(
+            x[n_id],
+            adjs,
+            torch.unsqueeze(y[n_id[:batch_size]], 1),
+            torch.tensor([i for i in range(batch_size)], device=device),
+            step_size_labeled,
+            n_ascent_steps=M,
+        )
 
         # # `adjs` holds a list of `(edge_index, e_id, size)` tuples.
         # adjs = [adj.to(device) for adj in adjs]
@@ -124,7 +135,6 @@ def train(epoch):
         # optimizer.zero_grad()
         # out = model(x[n_id], adjs)
         # loss = F.nll_loss(out, y[n_id[:batch_size]])
-
 
         # loss.backward()
         # optimizer.step()
@@ -135,6 +145,7 @@ def train(epoch):
     pbar.close()
 
     loss = total_loss / len(train_loader)
+    print(loss)
 
     return loss
 
@@ -164,7 +175,6 @@ def train_normal(epoch):
     loss = total_loss / len(train_loader)
 
     return loss
-
 
 
 @torch.no_grad()
