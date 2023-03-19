@@ -91,13 +91,9 @@ class SAGE(torch.nn.Module):
         return x_all
 
 
-device = None
-if torch.cuda.is_available():
-    device = torch.device('cuda')
-elif torch.backends.mps.is_available():
-    device = torch.device('mps')
-else:
-    device = torch.device('cpu')
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device(
+    'cpu')
+print(f"Using device {device}")
 
 model = SAGE(dataset.num_features, 256, dataset.num_classes, num_layers=3)
 model = model.to(device)
