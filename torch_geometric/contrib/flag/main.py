@@ -10,6 +10,7 @@ from ogb.nodeproppred import Evaluator, PygNodePropPredDataset
 
 # from .args import ArgsInit
 from torch_geometric.contrib.flag.args import ArgsInit
+from torch_geometric.contrib.flag.flag import FLAG
 from torch_geometric.utils import add_self_loops, to_undirected
 
 sys.path.insert(0, '..')
@@ -68,18 +69,18 @@ def test(model, x, edge_index, y_true, split_idx, evaluator):
     return train_acc, valid_acc, test_acc
 
 
-def train(model, x, edge_index, y_true, train_idx, optimizer):
-    model.train()
+# def train(model, x, edge_index, y_true, train_idx, optimizer):
+#     model.train()
 
-    optimizer.zero_grad()
+#     optimizer.zero_grad()
 
-    pred = model(x, edge_index)[train_idx]
+#     pred = model(x, edge_index)[train_idx]
 
-    loss = F.nll_loss(pred, y_true.squeeze(1)[train_idx])
-    loss.backward()
-    optimizer.step()
+#     loss = F.nll_loss(pred, y_true.squeeze(1)[train_idx])
+#     loss.backward()
+#     optimizer.step()
 
-    return loss.item()
+#     return loss.item()
 
 
 def train_flag(model, x, edge_index, y_true, train_idx, optimizer, device,
@@ -123,7 +124,7 @@ def main():
     train_idx = split_idx['train'].to(device)
 
     edge_index = data.edge_index.to(device)
-    edge_index = to_undirected(edge_index, data.num_nodes)
+    edge_index = to_undirected(edge_index, num_nodes=data.num_nodes)
 
     if args.self_loop:
         edge_index = add_self_loops(edge_index, num_nodes=data.num_nodes)[0]
@@ -148,14 +149,22 @@ def main():
         'highest_train': 0
     }
 
+    f = FLAG(model, optimizer, F.nll_loss, device)
+    # f = FLAG(model, optimizer, torch.nn.NLLLoss(), device)
+    # f = FLAG(model, optimizer, torch.nn.CrossEntropyLoss(), device)
+    # f = FLAG(model, optimizer, F.cross_entropy, device)
+
     start_time = time.time()
 
     for epoch in range(1, args.epochs + 1):
 
         # epoch_loss =
         # train(model, x, edge_index, y_true, train_idx, optimizer)
-        epoch_loss = train_flag(model, x, edge_index, y_true, train_idx,
-                                optimizer, device, args)
+        # epoch_loss = train_flag(model, x, edge_index, y_true, train_idx,
+        #                         optimizer, device, args)
+
+        loss, _ = f.forward(x, edge_index, y_true, train_idx, args.step_size)
+        epoch_loss = loss.item()
 
         logging.info('Epoch {}, training loss {:.4f}'.format(
             epoch, epoch_loss))
